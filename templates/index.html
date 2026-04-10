@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Medical Image Analysis</title>
+    <!-- Favicon for the Browser Tab -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2224%22 fill=%22url(%23g)%22/><defs><linearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%22100%22 y2=%22100%22><stop offset=%220%22 stop-color=%22%234facfe%22/><stop offset=%221%22 stop-color=%22%2300f2fe%22/></linearGradient></defs><path d=%22M50 25 L50 75 M25 50 L75 50%22 stroke=%22white%22 stroke-width=%2214%22 stroke-linecap=%22round%22 style=%22filter:drop-shadow(0px 2px 4px rgba(0,0,0,0.4))%22/><circle cx=%2250%22 cy=%2250%22 r=%226%22 fill=%22white%22/></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --button-glow: 0 0 20px rgba(0, 242, 254, 0.4);
+            --bg-dark: #090c10;
+            --glass-bg: rgba(22, 27, 34, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --success: #3fb950;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Hyperrealistic Ambient Lighting / Orbs */
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: -1;
+            animation: orbital 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body::before {
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(74, 144, 226, 0.2) 0%, transparent 60%);
+            top: -10%;
+            left: -10%;
+        }
+
+        body::after {
+            width: 40vw;
+            height: 40vw;
+            background: radial-gradient(circle, rgba(0, 242, 254, 0.15) 0%, transparent 60%);
+            bottom: -10%;
+            right: -10%;
+            animation-delay: -5s;
+        }
+
+        @keyframes orbital {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(10vw, 10vh) scale(1.1); }
+        }
+
+        .container {
+            width: 90%;
+            max-width: 900px;
+            background: var(--glass-bg);
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: containerAppear 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            opacity: 0;
+            transform: translateY(30px) scale(0.98);
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Realistic glass reflection edge */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            z-index: 1;
+        }
+
+        @keyframes containerAppear {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .header {
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: linear-gradient(to bottom, rgba(255,255,255,0.03), transparent);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 2.8rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(0, 242, 254, 0.2);
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            margin-top: 15px;
+            font-weight: 300;
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .content {
+            padding: 50px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 35px;
+            align-items: center;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.2);
+            padding: 50px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            max-width: 550px;
+            text-align: center;
+            position: relative;
+            box-shadow: inset 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #00f2fe;
+            background: rgba(0, 242, 254, 0.05);
+            transform: translateY(-5px);
+            box-shadow: inset 0 5px 20px rgba(0,0,0,0.3), 0 10px 20px rgba(0, 242, 254, 0.1);
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .icon {
+            font-size: 54px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+            transition: transform 0.3s ease;
+        }
+        
+        .upload-area:hover .icon {
+            transform: scale(1.1) translateY(-5px);
+        }
+
+        .upload-text {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .upload-text strong {
+            color: #00f2fe;
+        }
+
+        button {
+            background: var(--primary-gradient);
+            color: #fff;
+            border: none;
+            padding: 16px 45px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: inherit;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--button-glow), 0 10px 20px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.4);
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: skewX(-25deg);
+            transition: 0.5s;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 30px rgba(0, 242, 254, 0.6), 0 15px 25px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.5);
+        }
+
+        button:hover::after {
+            left: 200%;
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.3), 0 5px 10px rgba(0,0,0,0.4);
+        }
+
+        .result-container {
+            width: 100%;
+            max-width: 650px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            text-align: center;
+            display: none;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        #preview {
+            max-width: 100%;
+            max-height: 450px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: none;
+            margin: 0 auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .badge {
+            font-size: 1rem;
+            color: #c9d1d9;
+            background: rgba(255, 255, 255, 0.1);
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+
+        .result-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 20px 0;
+            text-shadow: 0 2px 20px currentColor;
+            letter-spacing: -1px;
+        }
+
+        .normal { color: var(--success); filter: drop-shadow(0 0 15px rgba(63, 185, 80, 0.3)); }
+        .pneumonia { color: var(--danger); filter: drop-shadow(0 0 15px rgba(248, 81, 73, 0.3)); }
+        .tuberculosis { color: var(--warning); filter: drop-shadow(0 0 15px rgba(210, 153, 34, 0.3)); }
+
+        .loading {
+            color: #8b949e;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-size: 1.1rem;
+        }
+
+        .loading::after {
+            content: "";
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid #00f2fe;
+            border-radius: 50%;
+            animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            filter: drop-shadow(0 0 5px #00f2fe);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Advanced AI Analysis</h1>
+            <div class="subtitle">Next-Generation Pneumonia & Tuberculosis Detection from Chest X-Rays</div>
+        </div>
+
+        <div class="content">
+            <form id="uploadForm" enctype="multipart/form-data"
+                style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <label class="upload-area" id="dropArea">
+                    <div class="icon">🩺</div>
+                    <div class="upload-text"><strong>Click to Browse</strong> or Drag & Drop X-Ray Image</div>
+                    <div style="font-size: 0.9rem; color: #58a6ff; margin-top: 10px; opacity: 0.8;">High Resolution PNG / JPG</div>
+                    <input type="file" name="image" id="imageInput" accept="image/*" required>
+                </label>
+
+                <div id="previewContainer" style="margin-top: 30px; width: 100%; text-align: center;">
+                    <img id="preview" alt="Radiology Scan Preview">
+                </div>
+
+                <button type="submit" id="analyzeBtn">Run Telemetry Analysis</button>
+            </form>
+
+            <div id="result" class="result-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const preview = document.getElementById('preview');
+        const dropArea = document.getElementById('dropArea');
+        const form = document.getElementById('uploadForm');
+        const resultDiv = document.getElementById('result');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        // Preview Image
+        imageInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    resultDiv.style.display = 'none'; // Hide previous results
+                    resultDiv.innerHTML = '';
+                    
+                    // Add subtle glow based on image presence
+                    preview.style.boxShadow = '0 15px 40px rgba(0, 242, 254, 0.15), inset 0 0 0 1px rgba(255,255,255,0.1)';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Handle Drag & Drop with hyperrealistic glow feedbacks
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('dragover');
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('dragover');
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                imageInput.files = e.dataTransfer.files;
+                const event = new Event('change');
+                imageInput.dispatchEvent(event);
+            }
+        });
+
+        // Submit form
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            resultDiv.style.display = 'block';
+            analyzeBtn.style.pointerEvents = 'none';
+            analyzeBtn.style.opacity = '0.7';
+            resultDiv.innerHTML = '<span class="loading">Running Deep Neural Networks...</span>';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    resultDiv.innerHTML = `<span style="color: var(--danger); text-shadow: 0 0 10px rgba(248,81,73,0.5);">⚠️ ${data.error}</span>`;
+                } else {
+                    let colorClass = 'normal';
+                    let icon = '✅';
+                    if (data.Prediction === 'Pneumonia') { colorClass = 'pneumonia'; icon = '🦠'; }
+                    if (data.Prediction === 'Tuberculosis') { colorClass = 'tuberculosis'; icon = '⚠️'; }
+
+                    const confPercent = (data.Confidence * 100).toFixed(2);
+                    
+                    resultDiv.innerHTML = `
+                        <div style="font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px;">Diagnostic Result</div>
+                        <div class="result-title ${colorClass}">${icon} ${data.Prediction}</div>
+                        <div class="badge">
+                            Neural Confidence: <strong style="color: #fff;">${confPercent}%</strong>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span style="color: var(--danger);">Connection lost. Re-initialize sequence.</span>`;
+            } finally {
+                analyzeBtn.style.pointerEvents = 'all';
+                analyzeBtn.style.opacity = '1';
+            }
+        });
+    </script>
+</body>
+
+</html>
